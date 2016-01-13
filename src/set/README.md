@@ -22,7 +22,7 @@ import (
 
 func main() {
   s := NewS("A", "B", "C")
-  fmt.Println("The set s has", s.Size(), "elements")
+  fmt.Println("The set s has ", s.Size(), "elements")
 }
 ```
 
@@ -31,7 +31,7 @@ Usage
 A set can be created in a few different ways:
 ```
 x := set.NewS("A", "B", "C")
-y := set.Parse("A B C")
+y := set.ParseS("A B C")
 
 z := set.NewS()
 z.Insert("A")
@@ -59,8 +59,8 @@ Other methods and functions:
 x.Contains("A")    // Returns true if the set x contains the element "A"
 x.Size()           // Returns the number of elements in the set x
 x.Empty()          // Returns true is the set x is empty
-set.IsSubset(x, y) // Returns true if the set x is a subset of the set y
-set.EQ(x, y)       // Returns true if the set x equals the set y
+x.IsSubsetOf(y)    // Returns true if the set x is a subset of the set y
+x.EQ(y)            // Returns true if the set x equals the set y
 ```
 Iterating over Elements
 -----------------------
