@@ -17,7 +17,7 @@ func main() {
   alert.Exit("Major issue, exiting")
 }
 ```
-With configuration you must use the config package [cfg](github.com/tokyo/src/cfg).
+With configuration you must use the config package [cfg](https://github.com/tokyo/src/cfg).
 In your config file, include an `Alert` section:
 
 ```
