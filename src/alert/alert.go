@@ -11,11 +11,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
 // Globals
-var url string
+var lock sync.Mutex
 var sentry *raven.Client
 var logFile *os.File
 
@@ -70,7 +71,7 @@ func setSentry(cfg *cfg.Config) {
 	var err error
 
 	// URL (From Env)
-	url = os.Getenv("SENTRY_DSN")
+	url := os.Getenv("SENTRY_DSN")
 
 	// Overwrite With Config URL
 	if cfg.Has("DSN") {
@@ -154,6 +155,11 @@ func setLogFile(cfg *cfg.Config) {
 
 // Send a message
 func send(level raven.Severity, msgs ...string) {
+
+	// Rentrant
+	lock.Lock()
+	defer lock.Unlock()
+
 	msg := msgs[0]
 	tags := msgs[1:]
 	TagLen := len(tags)
@@ -230,6 +236,8 @@ func timestamp() string {
 
 // Cerr ...
 func Cerr(msg string) {
+	lock.Lock()
+	defer lock.Unlock()
 	fmt.Fprintf(os.Stderr, "%s\n", msg)
 }
 
