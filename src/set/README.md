@@ -60,7 +60,7 @@ x.Contains("A")    // Returns true if the set x contains the element "A"
 x.Size()           // Returns the number of elements in the set x
 x.Empty()          // Returns true is the set x is empty
 x.IsSubsetOf(y)    // Returns true if the set x is a subset of the set y
-x.EQ(y)           // Returns true if the set x equals the set y
+x.EQ(y)            // Returns true if the set x equals the set y
 ```
 Iterating over Elements
 -----------------------
