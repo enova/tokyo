@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-  args := args.New(os.Args) // <-- That's it!
+  args := args.Parse() // <-- That's it!
 }
 ```
 The method `args.Size()` skips over options and returns the number of ordered arguments plus one (since position 0 is the executable name). Below are some example usages.
