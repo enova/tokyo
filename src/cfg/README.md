@@ -1,4 +1,4 @@
-# cfg [![Build Status](https://travis.enova.com/go/golios.svg?token=MxEEmacAvkpaxD6dqa3m&branch=master)](https://travis.enova.com/go/cfg)
+# cfg
 A package to parse configuration files
 
 Why
