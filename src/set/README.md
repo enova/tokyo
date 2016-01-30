@@ -47,7 +47,7 @@ y := set.NewS("B", "C")
 set.Or(x, y)  // Union: {"A", "B", "C"}
 set.And(x, y) // Intersection: {"B"}
 set.Sub(x, y) // Subtraction: {"A"}
-set.Sub(x, y) // Subtraction: {"C"}
+set.Sub(y, x) // Subtraction: {"C"}
 ```
 Elements can be removed by using the `Delete` method:
 ```
