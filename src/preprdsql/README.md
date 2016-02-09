@@ -16,14 +16,6 @@ code are:
 3. Version control your prepared statements.
 4. Syntax highlighting for your SQL code.
 
-## Installation
-
-via `go get`
-
-```bash
-$ go get git.enova.com/kgan/preprdsql
-```
-
 ## USAGE
 
 Create your prepared statements using the reference below:
