@@ -7,8 +7,7 @@ cfg       - package to parse configuration files
 dbl       - package to help avoid indeterminacy when dealing with floating-point numbers
 details   - package to help control logging of details in Go apps
 lax       - package containing a potpourri of utility functions commonly used by some of the authors
-preprdsql - package that provides a way to seperate your SQL statements from
-your code
+preprdsql - package that provides a way to seperate your SQL statements from your code
 set       - package that implements a Set container (of strings)
 spawn     - package that allows users to execute multiple shell commands in parallel
 stopwatch - package that implements a simple stopwatch for inline benchmarking
