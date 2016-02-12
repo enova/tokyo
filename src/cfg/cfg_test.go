@@ -40,7 +40,7 @@ func (c *Code) Run() error {
 	// Header
 	header := Code{}
 	header.Add(`package main`)
-	header.Add(`import "git.enova.com/go/cfg"`)
+	header.Add(`import "github.com/enova/tokyo/src/cfg"`)
 	header.Add(``)
 	header.Add(`func main() {`)
 
