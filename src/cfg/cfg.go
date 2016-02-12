@@ -121,7 +121,6 @@ func (c *Config) fromFile(filename string) {
 		//////////////////////////
 
 		if tokens[0] == "#INCLUDE" {
-			fmt.Println(filename, "Included", tokens[1])
 			inclFile := tokens[1]
 
 			// Check For Immediate Circular Inclusion
@@ -204,8 +203,8 @@ func (c *Config) Has(key ...string) bool {
 	return false
 }
 
-// Is returns whether the value for the given key matches
-// the argument passed does not exist it exits(1).
+// Is returns true if the value for the given key matches the supplied value.
+// If the key passed does not exist it exits(1).
 // If there are multiple occurrences of the key it exits(1)
 func (c *Config) Is(key, val string) bool {
 	V := c.Get(key)
