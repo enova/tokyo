@@ -1,11 +1,79 @@
 package cfg
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"testing"
 )
 
+// Code holds a block of code
+type Code struct {
+	lines []string
+}
+
+// Reset clears the lines
+func (c *Code) Reset() {
+	c.lines = make([]string, 0)
+}
+
+// Add adds a line
+func (c *Code) Add(line string) {
+	c.lines = append(c.lines, line)
+}
+
+// Text renders the code-text
+func (c *Code) Text() string {
+	var result string
+	for _, line := range c.lines {
+		result += line + "\n"
+	}
+	return result
+}
+
+// Run executes the code and returns the error
+func (c *Code) Run() error {
+	var result error
+
+	// Header
+	header := Code{}
+	header.Add(`package main`)
+	header.Add(`import "github.com/enova/tokyo/src/cfg"`)
+	header.Add(``)
+	header.Add(`func main() {`)
+
+	// Footer
+	footer := Code{}
+	footer.Add(`}`)
+
+	// Construct Code
+	text := header.Text() + c.Text() + footer.Text()
+	fmt.Println(text)
+
+	// Create Test-Directory
+	os.MkdirAll("test_code", 0755)
+
+	// Create Test-App From Code
+	ioutil.WriteFile("test_code/test_code.go", []byte(text), 0644)
+
+	// Run Test-App
+	cmd := "go run test_code/test_code.go"
+	output, result := exec.Command("bash", "-c", cmd).CombinedOutput()
+
+	// Logging For Failures
+	fmt.Println("Output\n", string(output))
+	fmt.Println("Result\n", result)
+
+	// Delete Test-Directory
+	cmd = "rm -rf test_code"
+	exec.Command("bash", "-c", cmd).Output()
+
+	return result
+}
+
+////////////
 // test.cfg
 // --------
 // #DEFINE <path> /usr/share
@@ -31,12 +99,14 @@ import (
 // sentence   The cat ran after
 // sentence+= the mouse
 
+////////////
 // base.cfg
 // -------------
 // width 24
 //
 // #INCLUDE parent.cfg
 
+//////////////
 // parent.cfg
 // ----------
 // height 36
@@ -46,7 +116,7 @@ func TestCfg(t *testing.T) {
 
 	// Set Environment Variable To Test (Below)
 	assert.Nil(os.Setenv("CFG_TEST", "all-good"))
-	cfg := New("test.cfg")
+	cfg := New("test/test.cfg")
 
 	// Has
 	assert.True(cfg.Has("db", "us", "user"))
@@ -123,4 +193,66 @@ func TestCfg(t *testing.T) {
 
 	// Environment-Variable Substitution (#ENV)
 	assert.Equal(cfg.Get("message"), "all-good")
+}
+
+// Test Exit-Points
+func TestExit(t *testing.T) {
+	assert := assert.New(t)
+
+	code := Code{}
+
+	code.Reset()
+	code.Add(`cfg.New("test/parent.cfg")`)
+	assert.Nil(code.Run(), "Read a valid config")
+
+	code.Reset()
+	code.Add(`cfg.New("test/bad/missing_env.cfg")`)
+	assert.NotNil(code.Run(), "Missing environment variable")
+
+	code.Reset()
+	code.Add(`cfg.New("test/nonexistent.cfg")`)
+	assert.NotNil(code.Run(), "Read a non-existent config file")
+
+	code.Reset()
+	code.Add(`cfg.New("test/bad/bad_define_key.cfg")`)
+	assert.NotNil(code.Run(), "Bad DEFINE key in config")
+
+	code.Reset()
+	code.Add(`cfg.New("test/bad/bad_env_variable.cfg")`)
+	assert.NotNil(code.Run(), "Bad ENV missing-variable name in config")
+
+	code.Reset()
+	code.Add(`cfg.New("test/bad_circular.cfg")`)
+	assert.NotNil(code.Run(), "Circular file inclusion")
+
+	code.Reset()
+	code.Add(`cfg := cfg.New("test/parent.cfg")`)
+	code.Add(`cfg.Get("nonexistent_key")`)
+	assert.NotNil(code.Run(), "Get a non-existent key")
+
+	code.Reset()
+	code.Add(`cfg := cfg.New("test/bad/bad_suffix.cfg")`)
+	code.Add(`cfg.Get("nonexistent_key")`)
+	assert.NotNil(code.Run(), "Get a non-existent key")
+
+	code.Reset()
+	code.Add(`cfg := cfg.New("test/bad/duplicate_key.cfg")`)
+	code.Add(`cfg.Get("fruits")`)
+	assert.NotNil(code.Run(), "Can't call Get() when there are duplicate keys")
+
+	code.Reset()
+	code.Add(`cfg := cfg.New("test/bad/duplicate_key.cfg")`)
+	code.Add(`cfg.GetN(0, "fruits")`)
+	code.Add(`cfg.GetN(1, "fruits")`)
+	assert.Nil(code.Run(), "Calling GetN() when there are duplicate keys")
+
+	code.Reset()
+	code.Add(`cfg := cfg.New("test/bad/duplicate_key.cfg")`)
+	code.Add(`cfg.GetN(-1, "fruits")`)
+	assert.NotNil(code.Run(), "Bad call to GetN(), out of range")
+
+	code.Reset()
+	code.Add(`cfg := cfg.New("test/bad/duplicate_key.cfg")`)
+	code.Add(`cfg.GetN(2, "fruits")`)
+	assert.NotNil(code.Run(), "Bad call to GetN(), out of range")
 }
