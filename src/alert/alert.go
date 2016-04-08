@@ -15,10 +15,15 @@ import (
 	"time"
 )
 
+// MaxSentryPerHour limits the number of messages sent to Sentry
+const MaxSentryPerHour int = 100
+
 // Globals
 var lock sync.Mutex
-var sentry *raven.Client
 var logFile *os.File
+var sentry *raven.Client
+var lastSentryHour time.Time
+var sentryCnt int
 
 func username() string {
 	user, err := user.Current()
@@ -200,12 +205,28 @@ func send(level raven.Severity, msgs ...string) {
 
 	// Write to Sentry
 	if sentry != nil {
+
+		// Reset Last-Sentry-Hour
+		if time.Since(lastSentryHour) >= time.Hour {
+			sentryCnt = 0
+			lastSentryHour = time.Now()
+		}
+
+		// Too Many Messages
+		if sentryCnt >= MaxSentryPerHour {
+			return
+		}
+
+		// Update Sentry Message-Count
+		sentryCnt++
+
+		// Packet
 		packet := &raven.Packet{
 			Message: msg,
 			Level:   level,
 		}
 
-		// Set tags
+		// Set Tags
 		if TagLen > 0 {
 			packet.Tags = make(raven.Tags, TagLen)
 
@@ -224,7 +245,7 @@ func send(level raven.Severity, msgs ...string) {
 		var err error
 		_, ch := sentry.Capture(packet, nil)
 		if err = <-ch; err != nil {
-			Cerr("Failed to send packet to Sentry: " + err.Error())
+			fmt.Fprintf(os.Stderr, "Failed to send packet to Sentry: "+err.Error())
 		}
 	}
 }
