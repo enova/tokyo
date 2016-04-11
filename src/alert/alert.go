@@ -24,6 +24,7 @@ var logFile *os.File
 var sentry *raven.Client
 var lastSentryHour time.Time
 var sentryCnt int
+var panicOnExit bool
 
 func username() string {
 	user, err := user.Current()
@@ -43,6 +44,11 @@ func stacktrace() string {
 	}
 
 	return result
+}
+
+// PanicOnExit will cause the alert package to call panic() instead of os.exit()
+func PanicOnExit() {
+	panicOnExit = true
 }
 
 // Set configures the alert settings
@@ -292,6 +298,10 @@ func WarnOn(err error, msg string) {
 // Exit ...
 func Exit(msg string) {
 	send(raven.ERROR, "Exit: "+msg)
+	if panicOnExit {
+		err := fmt.Errorf(msg)
+		panic(err)
+	}
 	os.Exit(1)
 }
 
