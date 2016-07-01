@@ -41,3 +41,45 @@ func TestDbl(t *testing.T) {
 	assert.Equal(SafeDiv(7.0, 2.0), 3.5, "SafeDiv failed")
 	assert.Equal(SafeDiv(1.0, 0.0), 0.0, "SafeDiv failed")
 }
+
+func TestRectify(t *testing.T) {
+	assert := assert.New(t)
+
+	x := 45.03
+	Rectify(&x, 0.01)
+	assert.Equal(x, 45.03)
+
+	// Rectify 10% Error
+	x = 45.031
+	Rectify(&x, 0.01)
+	assert.Equal(x, 45.03)
+
+	x = -45.031
+	Rectify(&x, 0.01)
+	assert.Equal(x, -45.03)
+
+	// Don't Rectify
+	x = 45.03000001
+	assert.NotEqual(x, 45.03)
+
+	// Rectify
+	Rectify(&x, 0.01)
+	assert.Equal(x, 45.03)
+
+	/////////////////////////////////////
+	// Exhibit Divergence Then Rectify //
+	/////////////////////////////////////
+
+	// Add A Penny 100000 Times
+	x = 45.03
+	for i := 0; i < 100000; i++ {
+		x += 0.01
+	}
+
+	// Diverged!
+	assert.NotEqual(x, 1045.03)
+
+	// Rectify
+	Rectify(&x, 0.01)
+	assert.Equal(x, 1045.03)
+}
