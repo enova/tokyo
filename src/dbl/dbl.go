@@ -69,6 +69,29 @@ func Floor(x float64, unit float64) float64 {
 	return float64(units) * unit
 }
 
+// Rectify brings the supplied value closer to the precision.
+// It should be used when a value is expected to be an integer
+// multiple of the unit, but due to repeated computations the value
+// may have diverged.
+//
+// (35.4501, 0.01) => (35.45 +- 1e-8)
+//
+func Rectify(x *float64, unit float64) {
+	if IsZero(unit) {
+		return
+	}
+
+	switch {
+	case *x < 0:
+		units := uint64((-(*x) + unit*0.01) / unit)
+		*x = float64(units) * unit * -1.0
+
+	default:
+		units := uint64((*x + unit*0.01) / unit)
+		*x = float64(units) * unit
+	}
+}
+
 // SafeDiv performs safe division of two numbers i.e. if the divisor
 // is zero, it returns zero
 func SafeDiv(x float64, y float64) float64 {
