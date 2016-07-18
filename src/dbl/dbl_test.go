@@ -42,6 +42,20 @@ func TestDbl(t *testing.T) {
 	assert.Equal(SafeDiv(1.0, 0.0), 0.0, "SafeDiv failed")
 }
 
+func TestFloorAtZero(t *testing.T) {
+	assert := assert.New(t)
+
+	// Floored
+	x := -0.00001
+	assert.True(FloorAtZero(&x))
+	assert.Equal(x, 0.0)
+
+	// Not-Floored
+	x = 0.00001
+	assert.False(FloorAtZero(&x))
+	assert.Equal(x, 0.00001)
+}
+
 func TestRectify(t *testing.T) {
 	assert := assert.New(t)
 

@@ -69,6 +69,16 @@ func Floor(x float64, unit float64) float64 {
 	return float64(units) * unit
 }
 
+// FloorAtZero floors the given number to zero. It returns
+// whether or not the number was changed.
+func FloorAtZero(x *float64) bool {
+	if *x < 0 {
+		*x = 0.0
+		return true
+	}
+	return false
+}
+
 // Rectify brings the supplied value closer to the precision.
 // It should be used when a value is expected to be an integer
 // multiple of the unit, but due to repeated computations the value
