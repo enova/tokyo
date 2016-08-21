@@ -1,0 +1,18 @@
+{
+	"fruit": "apple",
+	"width": 32,
+	"ratio": 12.50,
+
+	"owner": {
+		"name": "gopher",
+		"year": 2010,
+		"ssid": 1234567890,
+		"frac": 1.234
+	},
+
+	"teams": [
+		"red",
+		"green",
+		"blue"
+	]
+}
