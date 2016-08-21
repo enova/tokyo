@@ -8,7 +8,7 @@ The reflective properties of Go structs permit smooth marshalling and unmarshall
 
 # Usage
 
-To use this package you must first construct a `W` object using `jwalker.New(data)` where `data` is a slice of JSON-encoded bytes. If the underlying object is a map then use the method `Key(s)` to descend into the value for key `s`. If the underlying object is an array then use the method `At(i)` to descend into the value at index `i`. Each of these methods (`Key` and `At`) return a `W` object pointing to the correct _child_ data. The lookup was invalid (e.g. calling `Key()` for a non-existent key), then the resulting object be set to invalid. You can call the method `Ok()` to check the validity of a `W` instance.
+To use this package you must first construct a `W` object using `jwalker.New(data)` where `data` is a slice of JSON-encoded bytes. If the underlying object is a map then use the method `Key(s)` to descend into the value for key `s`. If the underlying object is an array then use the method `At(i)` to descend into the value at index `i`. Each of these methods (`Key` and `At`) return a `W` object pointing to the correct _child_ data. If a lookup was invalid (e.g. calling `Key()` for a non-existent key), then the resulting object be set to invalid. You can call the method `Ok()` to check the validity of a `W` instance.
 
 When `W` points to a terminal value you can use the methods `S(), I(), U32(), F64()` to extract that value. Each of these methods returns a value along with a `bool` indicating success.
 
@@ -102,4 +102,4 @@ Notice the short-form key-value methods `KeyS(), KeyI(), KeyU32(), KeyF64()`. An
 
 #### Acknowledgment
 
-A portion of the example JSON object in the test set was taken from [json.org](http://json.org/example.html)
+A portion of the test-data was taken from [json.org](http://json.org/example.html).
