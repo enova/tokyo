@@ -11,7 +11,7 @@ type W struct {
 }
 
 // Invalid (Static)
-var invalid *W = &W{obj: nil}
+var invalid = &W{obj: nil}
 
 // New ...
 func New(b []byte) (*W, error) {
@@ -62,7 +62,7 @@ func (w *W) Keys() []string {
 
 	// Extract Keys
 	result := make([]string, 0, len(mapped))
-	for key, _ := range mapped {
+	for key := range mapped {
 		result = append(result, key)
 	}
 
@@ -118,7 +118,7 @@ func (w *W) I() (int, bool) {
 	return 0, false
 }
 
-// I returns a string if the object is a string
+// U32 returns a string if the object is a string
 func (w *W) U32() (uint32, bool) {
 	if f, ok := w.F64(); ok {
 		return uint32(f), true

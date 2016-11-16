@@ -63,7 +63,7 @@ func TestAccess(t *testing.T) {
 	//////////////////
 	// Descend: Map //
 	//////////////////
-	
+
 	owner := w.Key("owner")
 	assert.True(owner.Ok())
 
@@ -94,11 +94,11 @@ func TestAccess(t *testing.T) {
 	assert.True(Contains(keys, "year"))
 	assert.True(Contains(keys, "ssid"))
 	assert.True(Contains(keys, "frac"))
-	
+
 	////////////////////
 	// Descend: Array //
 	////////////////////
-	
+
 	teams := w.Key("teams")
 	assert.True(teams.Ok())
 	assert.Equal(teams.Len(), 3)
@@ -147,7 +147,7 @@ func TestAccess(t *testing.T) {
 	name, ok = w.Key("owner").KeyS("name")
 	assert.True(ok)
 	assert.Equal(name, "gopher")
-	
+
 	year, ok = w.Key("owner").KeyI("year")
 	assert.True(ok)
 	assert.Equal(year, 2010)
