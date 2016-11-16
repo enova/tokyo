@@ -2,9 +2,10 @@ package alert
 
 import (
 	"fmt"
-	"github.com/enova/tokyo/src/cfg"
+	"git.enova.com/go/cfg"
 	"github.com/getsentry/raven-go"
 	"github.com/mgutz/ansi"
+	"io"
 	"log"
 	"os"
 	"os/user"
@@ -21,10 +22,18 @@ const MaxSentryPerHour int = 100
 // Globals
 var lock sync.Mutex
 var logFile *os.File
+var consoleStream io.Writer
 var sentry *raven.Client
 var lastSentryHour time.Time
 var sentryCnt int
 var panicOnExit bool
+
+func console() io.Writer {
+	if consoleStream != nil {
+		return consoleStream
+	}
+	return os.Stderr
+}
 
 func username() string {
 	user, err := user.Current()
@@ -49,6 +58,12 @@ func stacktrace() string {
 // PanicOnExit will cause the alert package to call panic() instead of os.exit()
 func PanicOnExit() {
 	panicOnExit = true
+}
+
+// SetErr sets the writer for console output. The default
+// writer is os.Stderr.
+func SetErr(w io.Writer) {
+	consoleStream = w
 }
 
 // Set configures the alert settings
@@ -140,8 +155,15 @@ func tagsToS(tags map[string]string) string {
 // Configure Log-File
 func setLogFile(cfg *cfg.Config) {
 
-	// Construct Log-File Path
+	// Get Log-Directory
 	dir := cfg.Get("Dir")
+	SetLogDir(dir)
+}
+
+// SetLogDir ...
+func SetLogDir(dir string) {
+
+	// Construct Log-File Path
 	_, app := filepath.Split(os.Args[0])
 	now := time.Now().Format("20060102_150405_000")
 	pid := os.Getpid()
@@ -167,7 +189,7 @@ func setLogFile(cfg *cfg.Config) {
 // Send a message
 func send(level raven.Severity, msgs ...string) {
 
-	// Rentrant
+	// Reentrant
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -175,12 +197,12 @@ func send(level raven.Severity, msgs ...string) {
 	tags := msgs[1:]
 	TagLen := len(tags)
 
-	// Local-Output for Stderr/Log-File (Colored-Msg + Stack-Trace)
+	// Local-Output for Console/Log-File (Colored-Msg + Stack-Trace)
 	local := ansi.Color(timestamp()+" ", "cyan")
 
 	switch {
 	case level == raven.INFO:
-		local += ansi.Color(msg, "blue") + "\n"
+		local += ansi.Color(msg, "blue")
 	case level == raven.WARNING:
 		local += ansi.Color(msg, "yellow") + "\n"
 		local += stacktrace()
@@ -201,8 +223,8 @@ func send(level raven.Severity, msgs ...string) {
 		local += ansi.Color("]", "cyan")
 	}
 
-	// Write to Stderr
-	fmt.Fprintf(os.Stderr, "%s\n", local)
+	// Write to Console
+	fmt.Fprintf(console(), "%s\n", local)
 
 	// Write to Log-File
 	if logFile != nil {
@@ -251,7 +273,7 @@ func send(level raven.Severity, msgs ...string) {
 		var err error
 		_, ch := sentry.Capture(packet, nil)
 		if err = <-ch; err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to send packet to Sentry: "+err.Error())
+			fmt.Fprintf(console(), "Failed to send packet to Sentry: "+err.Error())
 		}
 	}
 }
@@ -265,7 +287,7 @@ func timestamp() string {
 func Cerr(msg string) {
 	lock.Lock()
 	defer lock.Unlock()
-	fmt.Fprintf(os.Stderr, "%s\n", msg)
+	fmt.Fprintf(console(), "%s\n", msg)
 }
 
 // Info ...
@@ -280,15 +302,15 @@ func Warn(msgs ...string) {
 	send(raven.WARNING, msgs...)
 }
 
-// WarnIf writes the message to stderr if there was a failure
+// WarnIf invokes a warning if there was a failure
 func WarnIf(failure bool, msg string) {
 	if failure {
 		Warn(msg)
 	}
 }
 
-// WarnOn writes the error message and the supplied message to stderr
-// if there was an error
+// WarnOn invokes a warning containing both the error message
+// and the supplied message if there was an error
 func WarnOn(err error, msg string) {
 	if err != nil {
 		Warn(msg + ": " + err.Error())
