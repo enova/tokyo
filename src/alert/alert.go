@@ -2,7 +2,7 @@ package alert
 
 import (
 	"fmt"
-	"git.enova.com/go/cfg"
+	"github.com/enova/tokyo/src/cfg"
 	"github.com/getsentry/raven-go"
 	"github.com/mgutz/ansi"
 	"io"
