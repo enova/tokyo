@@ -20,13 +20,33 @@ import (
 const MaxSentryPerHour int = 100
 
 // Globals
-var lock sync.Mutex
-var logFile *os.File
-var consoleStream io.Writer
-var sentry *raven.Client
-var lastSentryHour time.Time
-var sentryCnt int
-var panicOnExit bool
+var (
+	cerrLock      sync.Mutex
+	sendLock      sync.Mutex
+	logFile       *os.File
+	consoleStream io.Writer
+	panicOnExit   bool
+)
+
+// Globals: Sentry
+var (
+	sentry         *raven.Client
+	lastSentryHour time.Time
+	sentryCnt      int
+	sentryThrottle *Throttle
+)
+
+// Levels
+const (
+	LevelInfo  = iota // INFO
+	LevelWarn         // WARN
+	LevelError        // ERROR
+)
+
+// Init ...
+func init() {
+	sentryThrottle = NewThrottle(MaxSentryPerHour)
+}
 
 func console() io.Writer {
 	if consoleStream != nil {
@@ -137,6 +157,7 @@ func setSentry(cfg *cfg.Config) {
 	Cerr("Sentry: " + tagsToS(tags))
 }
 
+// TagsToS ...
 func tagsToS(tags map[string]string) string {
 	result := "("
 	first := true
@@ -149,6 +170,25 @@ func tagsToS(tags map[string]string) string {
 		first = false
 	}
 	result += ")"
+	return result
+}
+
+// PrettyTagsToS ...
+func prettyTagsToS(tags []string) string {
+
+	if len(tags) == 0 {
+		return ""
+	}
+
+	result := ansi.Color("tags: [", "cyan")
+	for t, tag := range tags {
+		if t > 0 {
+			result += " "
+		}
+		result += ansi.Color(tag, "yellow")
+	}
+	result += ansi.Color("]", "cyan")
+
 	return result
 }
 
@@ -187,44 +227,34 @@ func SetLogDir(dir string) {
 }
 
 // Send a message
-func send(level raven.Severity, msgs ...string) {
+func send(level int, msgs ...string) {
 
-	// Reentrant
-	lock.Lock()
-	defer lock.Unlock()
+	// Sending Is Reentrant
+	sendLock.Lock()
+	defer sendLock.Unlock()
 
 	msg := msgs[0]
 	tags := msgs[1:]
-	TagLen := len(tags)
 
 	// Local-Output for Console/Log-File (Colored-Msg + Stack-Trace)
 	local := ansi.Color(timestamp()+" ", "cyan")
 
 	switch {
-	case level == raven.INFO:
+	case level == LevelInfo:
 		local += ansi.Color(msg, "blue")
-	case level == raven.WARNING:
+	case level == LevelWarn:
 		local += ansi.Color(msg, "yellow") + "\n"
 		local += stacktrace()
-	case level == raven.ERROR:
+	case level == LevelError:
 		local += ansi.Color(msg, "red") + "\n"
 		local += stacktrace()
 	}
 
 	// Add Tags To Local-Output
-	if TagLen > 0 {
-		local += ansi.Color("tags: [", "cyan")
-		for t, tag := range tags {
-			if t > 0 {
-				local += " "
-			}
-			local += ansi.Color(tag, "yellow")
-		}
-		local += ansi.Color("]", "cyan")
-	}
+	local += prettyTagsToS(tags)
 
 	// Write to Console
-	fmt.Fprintf(console(), "%s\n", local)
+	Cerr(local)
 
 	// Write to Log-File
 	if logFile != nil {
@@ -232,50 +262,7 @@ func send(level raven.Severity, msgs ...string) {
 	}
 
 	// Write to Sentry
-	if sentry != nil {
-
-		// Reset Last-Sentry-Hour
-		if time.Since(lastSentryHour) >= time.Hour {
-			sentryCnt = 0
-			lastSentryHour = time.Now()
-		}
-
-		// Too Many Messages
-		if sentryCnt >= MaxSentryPerHour {
-			return
-		}
-
-		// Update Sentry Message-Count
-		sentryCnt++
-
-		// Packet
-		packet := &raven.Packet{
-			Message: msg,
-			Level:   level,
-		}
-
-		// Set Tags
-		if TagLen > 0 {
-			packet.Tags = make(raven.Tags, TagLen)
-
-			for t, tag := range tags {
-				if tag == "skip_sentry" {
-					// skip sending to sentry
-					return
-				}
-				packet.Tags[t] = raven.Tag{
-					Key:   tag,
-					Value: "true",
-				}
-			}
-		}
-
-		var err error
-		_, ch := sentry.Capture(packet, nil)
-		if err = <-ch; err != nil {
-			fmt.Fprintf(console(), "Failed to send packet to Sentry: "+err.Error())
-		}
-	}
+	sendToSentry(level, msgs...)
 }
 
 // Timestamp
@@ -285,21 +272,21 @@ func timestamp() string {
 
 // Cerr ...
 func Cerr(msg string) {
-	lock.Lock()
-	defer lock.Unlock()
+	cerrLock.Lock()
+	defer cerrLock.Unlock()
 	fmt.Fprintf(console(), "%s\n", msg)
 }
 
 // Info ...
 func Info(msgs ...string) {
 	msgs[0] = "Info: " + msgs[0]
-	send(raven.INFO, msgs...)
+	send(LevelInfo, msgs...)
 }
 
 // Warn ...
 func Warn(msgs ...string) {
 	msgs[0] = "Warn: " + msgs[0]
-	send(raven.WARNING, msgs...)
+	send(LevelWarn, msgs...)
 }
 
 // WarnIf invokes a warning if there was a failure
@@ -319,7 +306,7 @@ func WarnOn(err error, msg string) {
 
 // Exit ...
 func Exit(msg string) {
-	send(raven.ERROR, "Exit: "+msg)
+	send(LevelError, "Exit: "+msg)
 	if panicOnExit {
 		err := fmt.Errorf(msg)
 		panic(err)
