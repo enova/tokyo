@@ -68,10 +68,10 @@ Each of the alert methods accepts an arbitrary list of arguments (i.e. `...inter
 s := "go"
 i := 5
 f := 12.3
-x := []int{1, 2, 3}
+m := []int{1, 2, 3}
 t := time.Now()
 
-alert.Warn(s, i, f, x, t)
+alert.Warn(s, i, f, m, t)
 ```
 
 # Activating Sentry
