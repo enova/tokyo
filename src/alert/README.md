@@ -3,7 +3,8 @@ A package to send alert messages
 
 # Usage
 With no configuration:
-```
+
+```go
 package main
 
 import (
@@ -17,6 +18,7 @@ func main() {
   alert.Exit("Major issue, exiting")
 }
 ```
+
 To enable confugration, the `alert` package must be used in conjunction with the config pacakge [cfg](https://github.com/enova/tokyo/tree/master/src/cfg).
 In your config file, include an `Alert` section:
 
@@ -37,7 +39,7 @@ if `Alert.LogFile.Use` is set to `true`, then the config file must also have a l
 
 In your application you must call `alert.Set()` to configure alerts:
 
-```
+```go
 package main
 
 import (
@@ -60,6 +62,18 @@ func main() {
 }
 ```
 
+Each of the alert methods accepts an arbitrary list of arguments (i.e. `...interface{}`):
+
+```go
+s := "go"
+i := 5
+f := 12.3
+m := []int{1, 2, 3}
+t := time.Now()
+
+alert.Warn(s, i, f, m, t)
+```
+
 # Activating Sentry
 
 To activate Sentry, add the following lines to your config file:
@@ -76,45 +90,41 @@ cmd  - the full command line being executed
 pid  - the process PID
 ```
 You can add additional tags within the config file:
+
 ```
 Alert.Sentry.Tag  color blue
 Alert.Sentry.Tag  blood-type 0
 Alert.Sentry.Tag  cities Tokyo Osaka Kyoto
 ```
+
 Each tag value must contain at least two tokens (key value). Additional values on the same
 line will be joined into a single value (e.g. above "cities" => "Tokyo Osaka Kyoto"). These
 tags will be added to every Sentry message that the application emits.
 
-You can also add tags within individual `alert` calls:
+If you wish to inhibit emitting a Sentry packet for a particular alert then add the special
+value `alert.SkipMail` to the argument list:
 
-```
-alert.Info("Some alert message", "apple", "banana", "pear")
-```
-Here the three additional arguments will be interpreted as tags in the Sentry message:
-```
-"apple" => "true"
-"banana" => "true"
-"pear" => "true"
-```
-The special tag `"skip_sentry"` is used to inhibit emitting a Sentry packet:
-```
+```go
 for i := 0; i < 100000; i++ {
 
   // Message
   msg := fmt.Sprinf("The value of I is %d", i)
 
-  // Send Alert (Skip Sentry)
-  alert.Info(msg, "skip_sentry")
+  // Send Alert But Skip Sentry
+  alert.Info(msg, alert.SkipMail)
 }
 ```
+
 
 # Activating Log-File
 
 To activate logging to a file, add the following lines to your config file:
+
 ```
 Alert.LogFile.Use True
 Alert.LogFile.Dir /var/log/
 ```
+
 If the directory does not exist, it will be created.
 Any calls to `alert.Info()`, `alert.Warn()` and `alert.Exit()` will then write messages
 to a file in that directory. The filename will be generated using the application

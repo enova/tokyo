@@ -6,7 +6,13 @@ import (
 	"github.com/getsentry/raven-go"
 )
 
-func sendToSentry(level int, msgs ...string) {
+// For Testing
+var lastSentryMsg string
+
+func sendToSentry(level int, msg string) {
+
+	// Testing
+	lastSentryMsg = msg
 
 	// Sentry-Enabled
 	if sentry == nil {
@@ -32,33 +38,10 @@ func sendToSentry(level int, msgs ...string) {
 		return
 	}
 
-	// Message And Tags
-	msg := msgs[0]
-	tags := msgs[1:]
-	TagLen := len(tags)
-
 	// Packet
 	packet := &raven.Packet{
 		Message: msg,
 		Level:   severity,
-	}
-
-	// Set Tags
-	if TagLen > 0 {
-		packet.Tags = make(raven.Tags, TagLen)
-
-		for t, tag := range tags {
-
-			// Skip-Sentry (Option)
-			if tag == "skip_sentry" {
-				return
-			}
-
-			packet.Tags[t] = raven.Tag{
-				Key:   tag,
-				Value: "true",
-			}
-		}
 	}
 
 	// Send To Sentry
