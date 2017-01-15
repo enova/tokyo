@@ -3,7 +3,7 @@ A package to send alert messages
 
 # Usage
 With no configuration:
-```
+```go
 package main
 
 import (
@@ -37,7 +37,7 @@ if `Alert.LogFile.Use` is set to `true`, then the config file must also have a l
 
 In your application you must call `alert.Set()` to configure alerts:
 
-```
+```go
 package main
 
 import (
@@ -87,7 +87,7 @@ tags will be added to every Sentry message that the application emits.
 
 You can also add tags within individual `alert` calls:
 
-```
+```go
 alert.Info("Some alert message", "apple", "banana", "pear")
 ```
 Here the three additional arguments will be interpreted as tags in the Sentry message:
@@ -97,7 +97,8 @@ Here the three additional arguments will be interpreted as tags in the Sentry me
 "pear" => "true"
 ```
 The special tag `"skip_sentry"` is used to inhibit emitting a Sentry packet:
-```
+
+```go
 for i := 0; i < 100000; i++ {
 
   // Message
