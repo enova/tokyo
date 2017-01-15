@@ -43,6 +43,12 @@ const (
 	LevelError        // ERROR
 )
 
+// Tag ...
+type Tag int
+
+// SkipMail ...
+const SkipMail Tag = 0
+
 // Init ...
 func init() {
 	sentryThrottle = NewThrottle(MaxSentryPerHour)
@@ -73,6 +79,14 @@ func stacktrace() string {
 	}
 
 	return result
+}
+
+// AddPrefix prepends the supplied prefix to msgs slice
+func addPrefix(prefix string, msgs ...interface{}) []interface{} {
+	fields := make([]interface{}, 1, len(msgs)+1)
+	fields[0] = prefix + ":"
+	fields = append(fields, msgs...)
+	return fields
 }
 
 // PanicOnExit will cause the alert package to call panic() instead of os.exit()
@@ -227,14 +241,38 @@ func SetLogDir(dir string) {
 }
 
 // Send a message
-func send(level int, msgs ...string) {
+func send(level int, fields ...interface{}) {
 
 	// Sending Is Reentrant
 	sendLock.Lock()
 	defer sendLock.Unlock()
 
-	msg := msgs[0]
-	tags := msgs[1:]
+	// Build Message And Collect Tags
+	var msg string
+	var skipMail bool
+
+	for i, f := range fields {
+
+		// Tags
+		if tag, ok := f.(Tag); ok {
+
+			// Skip-Mail
+			if tag == SkipMail {
+				skipMail = true
+			}
+		}
+
+		// Convert To String (Reflection)
+		str := fmt.Sprintf("%+v", f)
+
+		// Append To Message
+		if i > 0 {
+			msg += " "
+		}
+
+		// Append Message
+		msg += str
+	}
 
 	// Local-Output for Console/Log-File (Colored-Msg + Stack-Trace)
 	local := ansi.Color(timestamp()+" ", "cyan")
@@ -250,9 +288,6 @@ func send(level int, msgs ...string) {
 		local += stacktrace()
 	}
 
-	// Add Tags To Local-Output
-	local += prettyTagsToS(tags)
-
 	// Write to Console
 	Cerr(local)
 
@@ -261,8 +296,12 @@ func send(level int, msgs ...string) {
 		fmt.Fprintf(logFile, "%s\n", local)
 	}
 
-	// Write to Sentry
-	sendToSentry(level, msgs...)
+	// Send To External Services
+	if !skipMail {
+
+		// Write to Sentry
+		sendToSentry(level, msg)
+	}
 }
 
 // Timestamp
@@ -278,52 +317,55 @@ func Cerr(msg string) {
 }
 
 // Info ...
-func Info(msgs ...string) {
-	msgs[0] = "Info: " + msgs[0]
-	send(LevelInfo, msgs...)
+func Info(msgs ...interface{}) {
+	fields := addPrefix("INFO", msgs...)
+	send(LevelInfo, fields...)
 }
 
 // Warn ...
-func Warn(msgs ...string) {
-	msgs[0] = "Warn: " + msgs[0]
-	send(LevelWarn, msgs...)
+func Warn(msgs ...interface{}) {
+	fields := addPrefix("WARN", msgs...)
+	send(LevelWarn, fields...)
 }
 
 // WarnIf invokes a warning if there was a failure
-func WarnIf(failure bool, msg string) {
+func WarnIf(failure bool, msgs ...interface{}) {
 	if failure {
-		Warn(msg)
+		Warn(msgs)
 	}
 }
 
 // WarnOn invokes a warning containing both the error message
 // and the supplied message if there was an error
-func WarnOn(err error, msg string) {
+func WarnOn(err error, msgs ...interface{}) {
 	if err != nil {
-		Warn(msg + ": " + err.Error())
+		fields := addPrefix("("+err.Error()+")", msgs...)
+		Warn(fields)
 	}
 }
 
 // Exit ...
-func Exit(msg string) {
-	send(LevelError, "Exit: "+msg)
+func Exit(msgs ...interface{}) {
+	fields := addPrefix("Exit", msgs...)
+	send(LevelError, fields...)
 	if panicOnExit {
-		err := fmt.Errorf(msg)
+		err := fmt.Errorf("%+v", fields)
 		panic(err)
 	}
 	os.Exit(1)
 }
 
 // ExitIf ...
-func ExitIf(failure bool, msg string) {
+func ExitIf(failure bool, msgs ...interface{}) {
 	if failure {
-		Exit(msg)
+		Exit(msgs)
 	}
 }
 
 // ExitOn ...
-func ExitOn(err error, msg string) {
+func ExitOn(err error, msgs ...interface{}) {
 	if err != nil {
-		Exit(msg + ": " + err.Error())
+		fields := addPrefix(err.Error(), msgs...)
+		Exit(fields)
 	}
 }
