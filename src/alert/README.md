@@ -8,7 +8,7 @@ With no configuration:
 package main
 
 import (
-  "github.com/tokyo/src/alert"
+  "github.com/enova/tokyo/src/alert"
 )
 
 func main() {
@@ -43,8 +43,8 @@ In your application you must call `alert.Set()` to configure alerts:
 package main
 
 import (
-  "github.com/tokyo/src/alert"
-  "github.com/tokyo/src/cfg"
+  "github.com/enova/tokyo/src/alert"
+  "github.com/enova/tokyo/src/cfg"
 )
 
 func main() {
