@@ -223,3 +223,45 @@ func TestChain(t *testing.T) {
 	assert.True(ok)
 	assert.Equal(value, "XML")
 }
+
+func TestTrace(t *testing.T) {
+	assert := assert.New(t)
+
+	file := ReadFile(assert, "test/b.json")
+	w, err := New(file)
+	assert.Nil(err)
+
+	value := w.Key("glossary").At(100)
+	assert.Equal(value.Trace(), "[location] => key: glossary [failure] => at: 100 (not an array)")
+}
+
+func TestDiagnostics(t *testing.T) {
+	assert := assert.New(t)
+
+	file := ReadFile(assert, "test/b.json")
+	w, err := New(file)
+	assert.Nil(err)
+
+	value := w.Key("glossary").Key("title2")
+	assert.Equal(value.Location(), "key: glossary")
+	assert.Equal(value.Failure(), "key: title2 (key does not exist)")
+
+	value = w.Key("glossary").Key("title2").Key("thiswontexist")
+	assert.Equal(value.Location(), "key: glossary")
+	assert.Equal(value.Failure(), "key: title2 (key does not exist)")
+
+	value = w.Key("glossary").At(100)
+	assert.Equal(value.Location(), "key: glossary")
+	assert.Equal(value.Failure(), "at: 100 (not an array)")
+
+	value = w.Key("glossary").Key("Div").Key("List").Key("Entry").Key("Def").Key("SeeAlso").At(10)
+	assert.Equal(value.Location(), "key: glossary | key: Div | key: List | key: Entry | key: Def | key: SeeAlso")
+	assert.Equal(value.Failure(), "at: 10 (out of range, size=2)")
+
+	value = w.Key("glossary").Key("Div").Key("List").Key("Entry").Key("Def").Key("SeeAlso").At(-5)
+	assert.Equal(value.Location(), "key: glossary | key: Div | key: List | key: Entry | key: Def | key: SeeAlso")
+	assert.Equal(value.Failure(), "at: -5 (out of range, size=2)")
+
+	value = w.Key("glossary").Key("title").Key("another_title")
+	assert.Equal(value.Failure(), "key: another_title (not a map)")
+}
