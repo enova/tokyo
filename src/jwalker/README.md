@@ -57,7 +57,7 @@ Example Usage:
 import (
   "io/ioutil"
 
-  "git.enova.com/go/json"
+  "github.com/enova/tokyo/src/jwalker"
 )
 
 func main() {
