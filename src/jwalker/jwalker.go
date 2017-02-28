@@ -3,15 +3,15 @@ package jwalker
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 // W ...
 type W struct {
-	obj interface{}
+	obj      interface{}
+	location string
+	failure  string
 }
-
-// Invalid (Static)
-var invalid = &W{obj: nil}
 
 // New ...
 func New(b []byte) (*W, error) {
@@ -27,26 +27,54 @@ func (w *W) String() string {
 
 // Ok return true if the instance is not invalid
 func (w *W) Ok() bool {
-	return w != invalid
+	return w.failure == ""
+}
+
+// Location returns the current location
+func (w *W) Location() string {
+	return w.location
+}
+
+// Failure returns the current failure
+func (w *W) Failure() string {
+	return w.failure
+}
+
+// Trace returns a string with the current location and current failure (if any)
+func (w *W) Trace() string {
+	if w.failure == "" {
+		return w.location + " (no failures)"
+	}
+	return "[location] => " + w.location + " [failure] => " + w.failure
 }
 
 // Key descends into the supplied key and returns a new W object
 // constructed with the descended value.
 func (w *W) Key(key string) *W {
 
+	if !w.Ok() {
+		return w
+	}
+
 	// Verify Map
 	mapped, ok := w.obj.(map[string]interface{})
 	if !ok {
-		return invalid
+		w.failure = "key: " + key + " (not a map)"
+		return w
 	}
 
 	// Verify Key
 	value, ok := mapped[key]
 	if !ok {
-		return invalid
+		w.failure = "key: " + key + " (key does not exist)"
+		return w
 	}
 
 	child := &W{obj: value}
+
+	// Append Location
+	child.location = w.location
+	child.appendLocation("key: " + key)
 	return child
 }
 
@@ -73,19 +101,29 @@ func (w *W) Keys() []string {
 // constructed with the descended value.
 func (w *W) At(i int) *W {
 
+	if !w.Ok() {
+		return w
+	}
+
 	// Verify Array
 	array, ok := w.obj.([]interface{})
 	if !ok {
-		return invalid
+		w.failure = fmt.Sprintf("at: %d (not an array)", i)
+		return w
 	}
 
 	// Verify At
 	if i < 0 || i >= len(array) {
-		return invalid
+		w.failure = fmt.Sprintf("at: %d (out of range, size=%d)", i, len(array))
+		return w
 	}
 
 	value := array[i]
 	child := &W{obj: value}
+
+	// Append Location
+	child.location = w.location
+	child.appendLocation("at: " + strconv.Itoa(i))
 	return child
 }
 
@@ -118,7 +156,7 @@ func (w *W) I() (int, bool) {
 	return 0, false
 }
 
-// U32 returns a string if the object is a string
+// U32 returns a uint32 if the object is a string
 func (w *W) U32() (uint32, bool) {
 	if f, ok := w.F64(); ok {
 		return uint32(f), true
@@ -207,4 +245,15 @@ func (w *W) AtS(i int) (string, bool) {
 	}
 
 	return v, true
+}
+
+// AppendLocation ...
+func (w *W) appendLocation(l string) {
+
+	// Separator (If Non-Empty)
+	if w.location != "" {
+		w.location += " | "
+	}
+
+	w.location += l
 }
