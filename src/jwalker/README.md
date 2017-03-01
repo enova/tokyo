@@ -25,7 +25,25 @@ child = w.Key("name")
 valid = child.Ok() // true
 ```
 
-You can arbitrarily chain calls to `Key()` and `At()` on a `W` instance. If any of the calls is invalid, the final instance will return false when its `Ok()` method is invoked. The diagnostic methods `Location()` and `Failure()` reveal where a failure occurred. `Location()` indicates the sequence of successful accesses, and `Failure()` indicates the failed operation. The convenience method `Trace()` includes both location and failure in a single string.
+You can arbitrarily chain calls to `Key()` and `At()` on a `W` instance. If any of the calls is invalid, the final instance will return false when its `Ok()` method is invoked.
+
+## Diagnostics
+
+The diagnostic methods `Location()` and `Failure()` reveal where a failure occurred. `Location()` indicates the sequence of successful accesses, and `Failure()` indicates the failed operation. The convenience method `Trace()` includes both location and failure in a single string. In the following code assume a failure occurs at the call `.Key("sign")`:
+
+```go
+// Assume a failure happens at Key("sign")
+value := w.Key("fruits").At(2).Key("sign").Key("primary").At(3)
+
+// Diagnostics
+location := value.Location() // "key: fruits | at: 2"
+failure := value.Failure()   // "key: sign (key does not exist)"
+trace := value.Trace()       // "[location] => key: fruits | at: 2 [failure] => key: sign (key does not exist)"
+```
+
+The location indicates that the successful retrievals were `.Key("fruits")` and `.At(2)`. The failure shows there was an unsuccessful call to `Key("sign")` and it also provides a reason `(key does not exist)`. The other possible reason is `(not a map)`. For unsuccessful calls to `At(i)` the two reasons are `(out of range)` and `(not an array)`.
+
+## Example
 
 Here are the contents of `test/a.json`:
 
@@ -51,7 +69,7 @@ Here are the contents of `test/a.json`:
 
 ```
 
-Example Usage:
+Example code to interact with the above:
 
 ```go
 import (
@@ -96,10 +114,28 @@ func main() {
   teamB, ok = w.Key("teams").AtS(1)
   teamC, ok = w.Key("teams").AtS(2)
 
-  // Error Logging
-  fruit, ok := w.Key("owner").Key("favorite_fruit")
+  // Diagnostics (Key Not Found)
+  fruit, ok = w.Key("owner").Key("favorite_fruit")
   if !ok {
     panic(fruit.Trace()) // Displays: [location] => key: owner [failure] => key: favorite_fruit (key not found)
+  }
+
+  // Diagnostics (Not A Map)
+  team, ok := w.Key("teams").Key("first")
+  if !ok {
+    panic(team.Trace()) // Displays: [location] => key: teams [failure] => key: first (not a map)
+  }
+
+  // Diagnostics (Out Of Range)
+  fruit, ok = w.Key("teams").At(5)
+  if !ok {
+    panic(fruit.Trace()) // Displays: [location] => key: teams [failure] => at: 5 (out of range, size 3)
+  }
+
+  // Diagnostics (Not An Array)
+  fruit, ok = w.Key("owner").At(0)
+  if !ok {
+    panic(fruit.Trace()) // Displays: [location] => key: owner [failure] => at: 0 (key not found)
   }
 }
 ```
