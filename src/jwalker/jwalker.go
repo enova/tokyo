@@ -56,24 +56,26 @@ func (w *W) Key(key string) *W {
 		return w
 	}
 
+	// Result
+	child := &W{}
+	child.location = w.location
+
 	// Verify Map
 	mapped, ok := w.obj.(map[string]interface{})
 	if !ok {
-		w.failure = "key: " + key + " (not a map)"
-		return w
+		child.failure = "key: " + key + " (not a map)"
+		return child
 	}
 
 	// Verify Key
 	value, ok := mapped[key]
 	if !ok {
-		w.failure = "key: " + key + " (key does not exist)"
-		return w
+		child.failure = "key: " + key + " (key does not exist)"
+		return child
 	}
 
-	child := &W{obj: value}
-
 	// Append Location
-	child.location = w.location
+	child.obj = value
 	child.appendLocation("key: " + key)
 	return child
 }
@@ -105,24 +107,27 @@ func (w *W) At(i int) *W {
 		return w
 	}
 
+	// Result
+	child := &W{}
+	child.location = w.location
+
 	// Verify Array
 	array, ok := w.obj.([]interface{})
 	if !ok {
-		w.failure = fmt.Sprintf("at: %d (not an array)", i)
-		return w
+		child.failure = fmt.Sprintf("at: %d (not an array)", i)
+		return child
 	}
 
 	// Verify At
 	if i < 0 || i >= len(array) {
-		w.failure = fmt.Sprintf("at: %d (out of range, size=%d)", i, len(array))
-		return w
+		child.failure = fmt.Sprintf("at: %d (out of range, size=%d)", i, len(array))
+		return child
 	}
 
 	value := array[i]
-	child := &W{obj: value}
 
 	// Append Location
-	child.location = w.location
+	child.obj = value
 	child.appendLocation("at: " + strconv.Itoa(i))
 	return child
 }
