@@ -95,6 +95,13 @@ func TestAccess(t *testing.T) {
 	assert.True(Contains(keys, "ssid"))
 	assert.True(Contains(keys, "frac"))
 
+	// Miss Then Hit
+	owner = w.Key("owner_x")
+	assert.False(owner.Ok())
+
+	owner = w.Key("owner")
+	assert.True(owner.Ok())
+
 	////////////////////
 	// Descend: Array //
 	////////////////////
@@ -138,6 +145,13 @@ func TestAccess(t *testing.T) {
 	team, ok = teams.AtS(2)
 	assert.True(ok)
 	assert.Equal(team, "blue")
+
+	// Miss Then Hit
+	at = teams.At(3)
+	assert.False(at.Ok())
+
+	at = teams.At(2)
+	assert.True(at.Ok())
 
 	//////////////
 	// Chaining //
