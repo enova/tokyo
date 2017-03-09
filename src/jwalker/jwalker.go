@@ -177,79 +177,62 @@ func (w *W) F64() (float64, bool) {
 	return 0, false
 }
 
+// B returns the bool value if the object is a bool
+func (w *W) B() (bool, bool) {
+	if b, ok := w.obj.(bool); ok {
+		return b, true
+	}
+	return false, false
+}
+
 // KeyS returns the string value for the given key
 func (w *W) KeyS(key string) (string, bool) {
-	child := w.Key(key)
-	if !child.Ok() {
-		return "", false
-	}
-
-	v, ok := child.S()
-	if !ok {
-		return "", false
-	}
-
-	return v, true
+	return w.Key(key).S()
 }
 
 // KeyF64 returns the float64 value for the given key
 func (w *W) KeyF64(key string) (float64, bool) {
-	child := w.Key(key)
-	if !child.Ok() {
-		return 0, false
-	}
-
-	v, ok := child.F64()
-	if !ok {
-		return 0, false
-	}
-
-	return v, true
+	return w.Key(key).F64()
 }
 
 // KeyI returns the int value for the given key
 func (w *W) KeyI(key string) (int, bool) {
-	child := w.Key(key)
-	if !child.Ok() {
-		return 0, false
-	}
-
-	v, ok := child.I()
-	if !ok {
-		return 0, false
-	}
-
-	return v, true
+	return w.Key(key).I()
 }
 
 // KeyU32 returns the uint32 value for the given key
 func (w *W) KeyU32(key string) (uint32, bool) {
-	child := w.Key(key)
-	if !child.Ok() {
-		return 0, false
-	}
+	return w.Key(key).U32()
+}
 
-	v, ok := child.U32()
-	if !ok {
-		return 0, false
-	}
+// KeyB returns the bool value for the given key
+func (w *W) KeyB(key string) (bool, bool) {
+	return w.Key(key).B()
+}
 
-	return v, true
+// AtB returns the bool value at the given index
+func (w *W) AtB(i int) (bool, bool) {
+	return w.At(i).B()
+}
+
+// AtF64 returns the float64 value at the given index
+func (w *W) AtF64(i int) (float64, bool) {
+	return w.At(i).F64()
+}
+
+// AtI returns the int value at the given index
+func (w *W) AtI(i int) (int, bool) {
+	return w.At(i).I()
+}
+
+// AtU32 returns the uint32 value at the given index
+func (w *W) AtU32(i int) (uint32, bool) {
+	return w.At(i).U32()
 }
 
 // AtS returns the string at the given index
 func (w *W) AtS(i int) (string, bool) {
-	child := w.At(i)
-	if !child.Ok() {
-		return "", false
-	}
-
-	v, ok := child.S()
-	if !ok {
-		return "", false
-	}
-
-	return v, true
+	return w.At(i).S()
 }
 
 // AppendLocation ...
