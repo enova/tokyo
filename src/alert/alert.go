@@ -2,22 +2,16 @@ package alert
 
 import (
 	"fmt"
-	"github.com/enova/tokyo/src/cfg"
-	"github.com/getsentry/raven-go"
-	"github.com/mgutz/ansi"
 	"io"
 	"log"
 	"os"
 	"os/user"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"sync"
 	"time"
-)
 
-// MaxSentryPerHour limits the number of messages sent to Sentry
-const MaxSentryPerHour int = 100
+	"github.com/enova/tokyo/src/cfg"
+)
 
 // Globals
 var (
@@ -26,32 +20,68 @@ var (
 	logFile       *os.File
 	consoleStream io.Writer
 	panicOnExit   bool
+	handlers      []Handler
+	meta          Meta
 )
 
-// Globals: Sentry
-var (
-	sentry         *raven.Client
-	lastSentryHour time.Time
-	sentryCnt      int
-	sentryThrottle *Throttle
-)
+// PanicOnExit will cause the alert package to call panic() instead of os.exit()
+func PanicOnExit() {
+	panicOnExit = true
+}
 
-// Levels
-const (
-	LevelInfo  = iota // INFO
-	LevelWarn         // WARN
-	LevelError        // ERROR
-)
+// SetErr sets the writer for console output. The default writer is os.Stderr.
+func SetErr(w io.Writer) {
+	consoleStream = w
+}
 
-// Tag ...
-type Tag int
+// Set configures the alert settings
+func Set(cfg *cfg.Config) {
 
-// SkipMail ...
-const SkipMail Tag = 0
+	// Configure: Sentry-Client
+	if alertCfg, ok := getCfg("Sentry", cfg); ok {
+		setSentry(alertCfg)
+	}
 
-// Init ...
-func init() {
-	sentryThrottle = NewThrottle(MaxSentryPerHour)
+	// Configure: Multicast-Client
+	if alertCfg, ok := getCfg("Multicast", cfg); ok {
+		setMulticast(alertCfg)
+	}
+
+	// Configure: Log-File
+	if alertCfg, ok := getCfg("LogFile", cfg); ok {
+		setLogFile(alertCfg)
+	}
+}
+
+// SetLogDir ...
+func SetLogDir(dir string) {
+
+	// Construct Log-File Path
+	_, app := filepath.Split(os.Args[0])
+	now := time.Now().Format("20060102_150405_000")
+	pid := os.Getpid()
+	filename := fmt.Sprintf("%s/%s_%s_%d.log", dir, app, now, pid)
+
+	// Create Directory
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		Cerr("Alert: Can't create log directory: " + dir)
+		log.Fatal(err)
+	}
+
+	// Append Log-File
+	logFile, err = os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	if err != nil {
+		Cerr("Alert: Can't append file: " + filename + ", " + err.Error())
+		log.Fatal(err)
+	}
+
+	Cerr("LogFile: " + filename)
+}
+
+// AddHandler adds the supplied handler to the list of handlers
+func AddHandler(h Handler) {
+	handlers = append(handlers, h)
 }
 
 func console() io.Writer {
@@ -69,18 +99,6 @@ func username() string {
 	return user.Username
 }
 
-func stacktrace() string {
-	var result string
-
-	for i := 3; i < 8; i++ {
-		if _, fn, line, ok := runtime.Caller(i); ok {
-			result += ansi.Color(fmt.Sprintf("\t%s:%d\n", fn, line), "yellow")
-		}
-	}
-
-	return result
-}
-
 // AddPrefix prepends the supplied prefix to msgs slice
 func addPrefix(prefix string, msgs ...interface{}) []interface{} {
 	fields := make([]interface{}, 1, len(msgs)+1)
@@ -89,86 +107,21 @@ func addPrefix(prefix string, msgs ...interface{}) []interface{} {
 	return fields
 }
 
-// PanicOnExit will cause the alert package to call panic() instead of os.exit()
-func PanicOnExit() {
-	panicOnExit = true
-}
+// Returns the config for the given path, else nil and then also returns true if found
+func getCfg(cfgPath string, cfg *cfg.Config) (*cfg.Config, bool) {
 
-// SetErr sets the writer for console output. The default
-// writer is os.Stderr.
-func SetErr(w io.Writer) {
-	consoleStream = w
-}
+	// If path has a '.Use', ...
+	if cfg.Has("Alert." + cfgPath + ".Use") {
 
-// Set configures the alert settings
-func Set(cfg *cfg.Config) {
-
-	// Configure: Sentry-Client
-	if cfg.Has("Alert.Sentry.Use") {
-
-		// Use
-		use := cfg.Get("Alert.Sentry.Use")
+		// ...and Use is True...
+		use := cfg.Get("Alert." + cfgPath + ".Use")
 		if use == "true" || use == "True" {
-			sentryCfg := cfg.Descend("Alert.Sentry")
-			setSentry(sentryCfg)
+
+			// ...Get Alert configuration for path
+			return cfg.Descend("Alert." + cfgPath), true
 		}
 	}
-
-	// Configure: Log-File
-	if cfg.Has("Alert.LogFile.Use") {
-
-		// Use
-		use := cfg.Get("Alert.LogFile.Use")
-		if use == "true" || use == "True" {
-			logFileCfg := cfg.Descend("Alert.LogFile")
-			setLogFile(logFileCfg)
-		}
-	}
-}
-
-// Configure Sentry
-func setSentry(cfg *cfg.Config) {
-	var err error
-
-	// URL (From Env)
-	url := os.Getenv("SENTRY_DSN")
-
-	// Overwrite With Config URL
-	if cfg.Has("DSN") {
-		url = cfg.Get("DSN")
-	}
-
-	// Tags
-	tags := make(map[string]string)
-	tags["user"] = username()
-	tags["app"] = os.Args[0]
-	tags["cmd"] = strings.Join(os.Args, " ")
-	tags["pid"] = fmt.Sprintf("%d", os.Getpid())
-
-	// Custom-Tags
-	for t := 0; t < cfg.Size("Tag"); t++ {
-		line := cfg.GetN(t, "Tag")
-		tokens := strings.Fields(line)
-
-		// Invalid Tag
-		if len(tokens) < 2 {
-			Cerr("Tag should have at least two tokens - key value..., " + line)
-			continue
-		}
-
-		// Add Tag
-		key := tokens[0]
-		val := strings.Join(tokens[1:], " ")
-		tags[key] = val
-	}
-
-	// Create Sentry-Client
-	sentry, err = raven.NewWithTags(url, tags)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	Cerr("Sentry: " + tagsToS(tags))
+	return nil, false
 }
 
 // TagsToS ...
@@ -187,25 +140,6 @@ func tagsToS(tags map[string]string) string {
 	return result
 }
 
-// PrettyTagsToS ...
-func prettyTagsToS(tags []string) string {
-
-	if len(tags) == 0 {
-		return ""
-	}
-
-	result := ansi.Color("tags: [", "cyan")
-	for t, tag := range tags {
-		if t > 0 {
-			result += " "
-		}
-		result += ansi.Color(tag, "yellow")
-	}
-	result += ansi.Color("]", "cyan")
-
-	return result
-}
-
 // Configure Log-File
 func setLogFile(cfg *cfg.Config) {
 
@@ -214,93 +148,37 @@ func setLogFile(cfg *cfg.Config) {
 	SetLogDir(dir)
 }
 
-// SetLogDir ...
-func SetLogDir(dir string) {
-
-	// Construct Log-File Path
-	_, app := filepath.Split(os.Args[0])
-	now := time.Now().Format("20060102_150405_000")
-	pid := os.Getpid()
-	filename := fmt.Sprintf("%s/%s_%s_%d.log", dir, app, now, pid)
-
-	// Create Directory
-	err := os.MkdirAll(dir, 0755)
-	if err != nil {
-		Cerr("Alert: Can't create log directory: " + dir)
-		os.Exit(1)
-	}
-
-	// Append Log-File
-	logFile, err = os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-	if err != nil {
-		Cerr("Alert: Can't append file: " + filename + ", " + err.Error())
-		os.Exit(1)
-	}
-
-	Cerr("LogFile: " + filename)
-}
-
 // Send a message
-func send(level int, fields ...interface{}) {
+func send(level Level, fields ...interface{}) {
+
+	// Create New Message
+	msg := buildMessage(level, fields...)
 
 	// Sending Is Reentrant
 	sendLock.Lock()
 	defer sendLock.Unlock()
 
-	// Build Message And Collect Tags
-	var msg string
-	var skipMail bool
-
-	for i, f := range fields {
-
-		// Tags
-		if tag, ok := f.(Tag); ok {
-
-			// Skip-Mail
-			if tag == SkipMail {
-				skipMail = true
-			}
-		}
-
-		// Convert To String (Reflection)
-		str := fmt.Sprintf("%+v", f)
-
-		// Append To Message
-		if i > 0 {
-			msg += " "
-		}
-
-		// Append Message
-		msg += str
-	}
-
-	// Local-Output for Console/Log-File (Colored-Msg + Stack-Trace)
-	local := ansi.Color(timestamp()+" ", "cyan")
-
-	switch {
-	case level == LevelInfo:
-		local += ansi.Color(msg, "blue")
-	case level == LevelWarn:
-		local += ansi.Color(msg, "yellow") + "\n"
-		local += stacktrace()
-	case level == LevelError:
-		local += ansi.Color(msg, "red") + "\n"
-		local += stacktrace()
-	}
-
 	// Write to Console
-	Cerr(local)
+	Cerr(msg.Pretty())
 
 	// Write to Log-File
 	if logFile != nil {
-		fmt.Fprintf(logFile, "%s\n", local)
+		fmt.Fprintf(logFile, "%s\n", msg.Pretty())
 	}
 
 	// Send To External Services
-	if !skipMail {
+	if !msg.Whisper() {
 
 		// Write to Sentry
-		sendToSentry(level, msg)
+		sendToSentry(msg)
+
+		// Write to multicast
+		sendToMulticast(msg)
+	}
+
+	// Send To Custom-Handlers
+	for _, h := range handlers {
+		h.Handle(*msg)
 	}
 }
 
@@ -318,14 +196,12 @@ func Cerr(msg string) {
 
 // Info ...
 func Info(msgs ...interface{}) {
-	fields := addPrefix("INFO", msgs...)
-	send(LevelInfo, fields...)
+	send(LevelInfo, msgs...)
 }
 
 // Warn ...
 func Warn(msgs ...interface{}) {
-	fields := addPrefix("WARN", msgs...)
-	send(LevelWarn, fields...)
+	send(LevelWarn, msgs...)
 }
 
 // WarnIf invokes a warning if there was a failure
@@ -346,10 +222,9 @@ func WarnOn(err error, msgs ...interface{}) {
 
 // Exit ...
 func Exit(msgs ...interface{}) {
-	fields := addPrefix("Exit", msgs...)
-	send(LevelError, fields...)
+	send(LevelExit, msgs...)
 	if panicOnExit {
-		err := fmt.Errorf("%+v", fields)
+		err := fmt.Errorf("%+v", msgs)
 		panic(err)
 	}
 	os.Exit(1)
