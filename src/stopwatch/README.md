@@ -12,7 +12,7 @@ Example:
 package main
 
 import (
-	"git.enova.com/go/stopwatch"
+	"github.com/enova/tokyo/src/stopwatch"
 )
 
 func main() {
