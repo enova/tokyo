@@ -1,18 +1,28 @@
 {
-	"fruit": "apple",
-	"width": 32,
-	"ratio": 12.50,
+  "fruit": "apple",
+  "width": 32,
+  "ratio": 12.50,
+  "tasty": true,
 
-	"owner": {
-		"name": "gopher",
-		"year": 2010,
-		"ssid": 1234567890,
-		"frac": 1.234
-	},
+  "mixed": [
+	"banana",
+	64,
+	29.98,
+	true,
+	false
+  ],
+  
+  "owner": {
+	"name": "gopher",
+	"year": 2010,
+	"ssid": 1234567890,
+	"frac": 1.234,
+	"rich": false
+  },
 
-	"teams": [
-		"red",
-		"green",
-		"blue"
-	]
+  "teams": [
+	"red",
+	"green",
+	"blue"
+  ]
 }

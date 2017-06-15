@@ -19,7 +19,7 @@ func main() {
 }
 ```
 
-To enable confugration, the `alert` package must be used in conjunction with the config pacakge [cfg](https://github.com/enova/tokyo/tree/master/src/cfg).
+To enable confugration, the `alert` package must be used in conjunction with the config pacakge [cfg](https://github.com/enova/tokyo/src/cfg).
 In your config file, include an `Alert` section:
 
 ```
@@ -102,7 +102,7 @@ line will be joined into a single value (e.g. above "cities" => "Tokyo Osaka Kyo
 tags will be added to every Sentry message that the application emits.
 
 If you wish to inhibit emitting a Sentry packet for a particular alert then add the special
-value `alert.SkipMail` to the argument list:
+flag `alert.Whisper` to the argument list:
 
 ```go
 for i := 0; i < 100000; i++ {
@@ -111,10 +111,11 @@ for i := 0; i < 100000; i++ {
   msg := fmt.Sprinf("The value of I is %d", i)
 
   // Send Alert But Skip Sentry
-  alert.Info(msg, alert.SkipMail)
+  alert.Info(msg, alert.Whisper)
 }
 ```
 
+The flag `alert.Whisper` is meant to replace the synonomous (but depracated) flag `alert.SkipMail`.
 
 # Activating Log-File
 
@@ -132,4 +133,36 @@ name, the current date and time, and the process PID. For example:
 
 ```
 /var/log/myapp_20151022_151843_000_46747.log
+```
+# Adding Your Own Alert-Handler
+
+If you would like to react to alerts using your own logging mechanism you can implement a custom handler to wire in your software. Simple implement the `alert.Handler` interface:
+
+```go
+// Handler is the interface for alert-handlers
+type Handler interface {
+    Handle(msg Message)
+}
+```
+
+and add your instance using `alert.AddHandler()`. Here is a complete example:
+
+```go
+package main
+
+import (
+  "github.com/enova/tokyo/src/alert"
+)
+
+type MyLogger struct {}
+func (m *MyLogger) Handle(msg Message) {
+  // ... do something with the message
+  fmt.Println(msg.Text, "received at", msg.Now)
+}
+
+func main() {
+  logger := &MyLogger{}
+  alert.AddHandler(logger)
+  alert.Info("I should be handling this now")
+}
 ```

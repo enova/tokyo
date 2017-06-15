@@ -24,6 +24,11 @@ func Contains(list []string, target string) bool {
 	return false
 }
 
+// Validity ...
+func validity(v interface{}, ok bool) bool {
+	return ok
+}
+
 func TestAccess(t *testing.T) {
 	assert := assert.New(t)
 
@@ -60,6 +65,14 @@ func TestAccess(t *testing.T) {
 	assert.True(ok)
 	assert.Equal(f, 12.50)
 
+	// B
+	tasty := w.Key("tasty")
+	assert.True(tasty.Ok())
+
+	b, ok := tasty.B()
+	assert.True(ok)
+	assert.True(b)
+
 	//////////////////
 	// Descend: Map //
 	//////////////////
@@ -87,13 +100,19 @@ func TestAccess(t *testing.T) {
 	assert.True(ok)
 	assert.Equal(frac, 1.234)
 
+	// KeyB
+	rich, ok := owner.KeyB("rich")
+	assert.True(ok)
+	assert.False(rich)
+
 	// Keys
 	keys := owner.Keys()
-	assert.Equal(len(keys), 4)
+	assert.Equal(len(keys), 5)
 	assert.True(Contains(keys, "name"))
 	assert.True(Contains(keys, "year"))
 	assert.True(Contains(keys, "ssid"))
 	assert.True(Contains(keys, "frac"))
+	assert.True(Contains(keys, "rich"))
 
 	// Miss Then Hit
 	owner = w.Key("owner_x")
@@ -153,6 +172,34 @@ func TestAccess(t *testing.T) {
 	at = teams.At(2)
 	assert.True(at.Ok())
 
+	// Short-Forms At
+	mixed := w.Key("mixed")
+	assert.True(mixed.Ok())
+
+	s, ok = mixed.AtS(0)
+	assert.True(ok)
+	assert.Equal(s, "banana")
+
+	u, ok = mixed.AtU32(1)
+	assert.True(ok)
+	assert.Equal(u, uint32(64))
+
+	i, ok = mixed.AtI(1)
+	assert.True(ok)
+	assert.Equal(i, 64)
+
+	f, ok = mixed.AtF64(2)
+	assert.True(ok)
+	assert.Equal(f, 29.98)
+
+	b, ok = mixed.AtB(3)
+	assert.True(ok)
+	assert.True(b)
+
+	b, ok = mixed.AtB(4)
+	assert.True(ok)
+	assert.False(b)
+
 	//////////////
 	// Chaining //
 	//////////////
@@ -189,10 +236,14 @@ func TestAccess(t *testing.T) {
 
 	team, ok = w.Key("teams").AtS(3)
 	assert.False(ok)
+}
 
-	/////////////
-	// Invalid //
-	/////////////
+func TestFailedAccess(t *testing.T) {
+	assert := assert.New(t)
+
+	bytes := ReadFile(assert, "test/a.json")
+	w, err := New(bytes)
+	assert.Nil(err)
 
 	badKey := w.Key("fruitx")
 	assert.False(badKey.Ok())
@@ -203,11 +254,53 @@ func TestAccess(t *testing.T) {
 	badKey = w.Key("owner").Key("namex")
 	assert.False(badKey.Ok())
 
+	badKey = w.Key("owner").Key("name").Key("x").Key("y").Key("z")
+	assert.False(badKey.Ok())
+
 	badAt := w.Key("owner").At(0)
 	assert.False(badAt.Ok())
 
-	badKey = w.Key("owner").Key("name").Key("x").Key("y").Key("z")
-	assert.False(badKey.Ok())
+	mixed := w.Key("mixed")
+	badAt = mixed.At(-1)
+	assert.False(badAt.Ok())
+
+	badAt = mixed.At(5)
+	assert.False(badAt.Ok())
+
+	s := mixed.At(0)
+	assert.False(validity(s.B()))
+	assert.False(validity(s.F64()))
+	assert.False(validity(s.I()))
+	assert.False(validity(s.U32()))
+	assert.True(validity(s.S()))
+
+	i := mixed.At(1)
+	assert.False(validity(i.B()))
+	assert.True(validity(i.F64()))
+	assert.True(validity(i.I()))
+	assert.True(validity(i.U32()))
+	assert.False(validity(i.S()))
+
+	f := mixed.At(2)
+	assert.False(validity(f.B()))
+	assert.True(validity(f.F64()))
+	assert.True(validity(f.I()))
+	assert.True(validity(f.U32()))
+	assert.False(validity(f.S()))
+
+	b := mixed.At(3)
+	assert.True(validity(b.B()))
+	assert.False(validity(b.F64()))
+	assert.False(validity(b.I()))
+	assert.False(validity(b.U32()))
+	assert.False(validity(b.S()))
+
+	b = mixed.At(4)
+	assert.True(validity(b.B()))
+	assert.False(validity(b.F64()))
+	assert.False(validity(b.I()))
+	assert.False(validity(b.U32()))
+	assert.False(validity(b.S()))
 }
 
 func TestChain(t *testing.T) {
@@ -246,7 +339,7 @@ func TestTrace(t *testing.T) {
 	assert.Nil(err)
 
 	value := w.Key("glossary").At(100)
-	assert.Equal(value.Trace(), "[location] => key: glossary [failure] => at: 100 (not an array)")
+	assert.Equal(value.Trace(), "[location] => key: glossary [failure] => at: 100 (not an array, rather it is of type map[string]interface {})")
 }
 
 func TestDiagnostics(t *testing.T) {
@@ -266,7 +359,7 @@ func TestDiagnostics(t *testing.T) {
 
 	value = w.Key("glossary").At(100)
 	assert.Equal(value.Location(), "key: glossary")
-	assert.Equal(value.Failure(), "at: 100 (not an array)")
+	assert.Equal(value.Failure(), "at: 100 (not an array, rather it is of type map[string]interface {})")
 
 	value = w.Key("glossary").Key("Div").Key("List").Key("Entry").Key("Def").Key("SeeAlso").At(10)
 	assert.Equal(value.Location(), "key: glossary | key: Div | key: List | key: Entry | key: Def | key: SeeAlso")
@@ -277,5 +370,5 @@ func TestDiagnostics(t *testing.T) {
 	assert.Equal(value.Failure(), "at: -5 (out of range, size=2)")
 
 	value = w.Key("glossary").Key("title").Key("another_title")
-	assert.Equal(value.Failure(), "key: another_title (not a map)")
+	assert.Equal(value.Failure(), "key: another_title (not a map, rather it is of type string)")
 }

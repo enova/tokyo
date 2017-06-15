@@ -3,6 +3,7 @@ package jwalker
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
 )
 
@@ -20,9 +21,16 @@ func New(b []byte) (*W, error) {
 	return &w, err
 }
 
-// String
+// String is for diagnostics only. Use S() to extract a string element.
 func (w *W) String() string {
 	return fmt.Sprintf("%v", w.obj)
+}
+
+// Pretty returns an indented, multi-line string representation of the underlying object
+// (invokes json.MarshalIndent)
+func (w *W) Pretty() string {
+	bytes, _ := json.MarshalIndent(w.obj, "", "  ")
+	return string(bytes)
 }
 
 // Ok return true if the instance is not invalid
@@ -63,7 +71,9 @@ func (w *W) Key(key string) *W {
 	// Verify Map
 	mapped, ok := w.obj.(map[string]interface{})
 	if !ok {
-		child.failure = "key: " + key + " (not a map)"
+		child.failure = "key: " + key
+		child.failure += " (not a map,"
+		child.failure += " rather it is of type " + reflect.TypeOf(w.obj).String() + ")"
 		return child
 	}
 
@@ -114,7 +124,8 @@ func (w *W) At(i int) *W {
 	// Verify Array
 	array, ok := w.obj.([]interface{})
 	if !ok {
-		child.failure = fmt.Sprintf("at: %d (not an array)", i)
+		child.failure = fmt.Sprintf("at: %d (not an array,", i)
+		child.failure += " rather it is of type " + reflect.TypeOf(w.obj).String() + ")"
 		return child
 	}
 
@@ -177,79 +188,62 @@ func (w *W) F64() (float64, bool) {
 	return 0, false
 }
 
+// B returns the bool value if the object is a bool
+func (w *W) B() (bool, bool) {
+	if b, ok := w.obj.(bool); ok {
+		return b, true
+	}
+	return false, false
+}
+
 // KeyS returns the string value for the given key
 func (w *W) KeyS(key string) (string, bool) {
-	child := w.Key(key)
-	if !child.Ok() {
-		return "", false
-	}
-
-	v, ok := child.S()
-	if !ok {
-		return "", false
-	}
-
-	return v, true
+	return w.Key(key).S()
 }
 
 // KeyF64 returns the float64 value for the given key
 func (w *W) KeyF64(key string) (float64, bool) {
-	child := w.Key(key)
-	if !child.Ok() {
-		return 0, false
-	}
-
-	v, ok := child.F64()
-	if !ok {
-		return 0, false
-	}
-
-	return v, true
+	return w.Key(key).F64()
 }
 
 // KeyI returns the int value for the given key
 func (w *W) KeyI(key string) (int, bool) {
-	child := w.Key(key)
-	if !child.Ok() {
-		return 0, false
-	}
-
-	v, ok := child.I()
-	if !ok {
-		return 0, false
-	}
-
-	return v, true
+	return w.Key(key).I()
 }
 
 // KeyU32 returns the uint32 value for the given key
 func (w *W) KeyU32(key string) (uint32, bool) {
-	child := w.Key(key)
-	if !child.Ok() {
-		return 0, false
-	}
+	return w.Key(key).U32()
+}
 
-	v, ok := child.U32()
-	if !ok {
-		return 0, false
-	}
+// KeyB returns the bool value for the given key
+func (w *W) KeyB(key string) (bool, bool) {
+	return w.Key(key).B()
+}
 
-	return v, true
+// AtB returns the bool value at the given index
+func (w *W) AtB(i int) (bool, bool) {
+	return w.At(i).B()
+}
+
+// AtF64 returns the float64 value at the given index
+func (w *W) AtF64(i int) (float64, bool) {
+	return w.At(i).F64()
+}
+
+// AtI returns the int value at the given index
+func (w *W) AtI(i int) (int, bool) {
+	return w.At(i).I()
+}
+
+// AtU32 returns the uint32 value at the given index
+func (w *W) AtU32(i int) (uint32, bool) {
+	return w.At(i).U32()
 }
 
 // AtS returns the string at the given index
 func (w *W) AtS(i int) (string, bool) {
-	child := w.At(i)
-	if !child.Ok() {
-		return "", false
-	}
-
-	v, ok := child.S()
-	if !ok {
-		return "", false
-	}
-
-	return v, true
+	return w.At(i).S()
 }
 
 // AppendLocation ...
