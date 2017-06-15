@@ -135,7 +135,7 @@ func main() {
   // Diagnostics (Not An Array)
   fruit, ok = w.Key("owner").At(0)
   if !ok {
-    panic(fruit.Trace()) // Displays: [location] => key: owner [failure] => at: 0 (key not found)
+    panic(fruit.Trace()) // Displays: [location] => key: owner [failure] => at: 0 (not an array)
   }
 }
 ```
