@@ -99,12 +99,12 @@ func TestSentry(t *testing.T) {
 	Info("abc", Whisper)
 	assert.Empty(lastSentryMsg)
 	assert.Contains(r.value, "abc")
-	assert.Contains(r.value, "Tag-Whisper")
+	assert.Contains(r.value, "Flag-Whisper")
 
 	Info("abc")
 	assert.Contains(lastSentryMsg, "abc")
 	assert.Contains(r.value, "abc")
-	assert.NotContains(r.value, "Tag-Whisper")
+	assert.NotContains(r.value, "Flag-Whisper")
 }
 
 func TestMulticast(t *testing.T) {
@@ -114,12 +114,12 @@ func TestMulticast(t *testing.T) {
 	Info("abc", Whisper)
 	assert.Empty(lastMulticastMsg)
 	assert.Contains(r.value, "abc")
-	assert.Contains(r.value, "Tag-Whisper")
+	assert.Contains(r.value, "Flag-Whisper")
 
 	Info("abc")
 	assert.Contains(lastMulticastMsg, "abc")
 	assert.Contains(r.value, "abc")
-	assert.NotContains(r.value, "Tag-Whisper")
+	assert.NotContains(r.value, "Flag-Whisper")
 }
 
 // Test-Handler
@@ -139,9 +139,9 @@ func TestHandler(t *testing.T) {
 	AddHandler(&handler)
 	Info("abc")
 	assert.Contains(handler.msg.Text, "abc")
-	assert.Empty(handler.msg.Tags)
+	assert.Empty(handler.msg.Flags)
 
 	Info("xyz", Whisper)
 	assert.Contains(handler.msg.Text, "xyz")
-	assert.Equal(len(handler.msg.Tags), 1)
+	assert.Equal(len(handler.msg.Flags), 1)
 }

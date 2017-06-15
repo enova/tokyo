@@ -22,7 +22,7 @@ type Message struct {
 	Now   time.Time
 	Level Level
 	Text  string
-	Tags  []Tag
+	Flags []Flag
 }
 
 // Initialize Meta-Data (Static)
@@ -38,17 +38,17 @@ func (m *Message) copy() Message {
 	copy.Now = m.Now
 	copy.Level = m.Level
 	copy.Text = m.Text
-	copy.Tags = make([]Tag, len(m.Tags))
-	for i, t := range m.Tags {
-		copy.Tags[i] = t
+	copy.Flags = make([]Flag, len(m.Flags))
+	for i, t := range m.Flags {
+		copy.Flags[i] = t
 	}
 
 	return copy
 }
 
-// Whisper searches for the presence of the tag Skip-Outgoing-Alerts
+// Whisper searches for the presence of the Whisper flag
 func (m *Message) Whisper() bool {
-	for _, t := range m.Tags {
+	for _, t := range m.Flags {
 		if t == Whisper {
 			return true
 		}
@@ -100,12 +100,12 @@ func buildMessage(level Level, fields ...interface{}) *Message {
 	// Add Fields
 	for i, f := range fields {
 
-		// Tags
-		if tag, ok := f.(Tag); ok {
+		// Flags
+		if flag, ok := f.(Flag); ok {
 
 			// Whisper
-			if tag == Whisper {
-				msg.Tags = append(msg.Tags, tag)
+			if flag == Whisper {
+				msg.Flags = append(msg.Flags, flag)
 			}
 		}
 
