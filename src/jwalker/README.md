@@ -10,7 +10,7 @@ The reflective properties of Go structs permit smooth marshalling and unmarshall
 
 To use this package you must first construct a `W` object using `jwalker.New(data)` where `data` is a slice of JSON-encoded bytes. If the underlying object is a map then use the method `Key(s)` to descend into the value for key `s`. If the underlying object is an array then use the method `At(i)` to descend into the value at index `i`. Each of these methods (`Key` and `At`) returns a `W` object pointing to the correct _child_ data. If the lookup was invalid (e.g. calling `Key()` for a non-existent key), then the resulting object be set to invalid. You can call the method `Ok()` to check the validity of a `W` instance.
 
-When `W` points to a terminal value you can use the methods `S(), I(), U32(), F64()` to extract that value. Each of these methods returns a value along with a `bool` indicating success.
+When `W` points to a terminal value you can use the methods `S(), I(), U32(), F64(), B()` to extract that value. Each of these methods returns a value along with a `bool` indicating success.
 
 Both the `Key()` and `At()` methods will always return an object of type `*W`. When an invalid lookup takes place, the value returned will still be a bonafide `W` object. This design allows the user to chain arbitrary lookups without worrying about `nil` pointer exceptions. For example, consider the following code:
 
@@ -43,30 +43,41 @@ trace := value.Trace()       // "[location] => key: fruits | at: 2 [failure] => 
 
 The location indicates that the successful retrievals were `.Key("fruits")` and `.At(2)`. The failure shows there was an unsuccessful call to `Key("sign")` and it also provides a reason `(key does not exist)`. The other possible reason is `(not a map)`. For unsuccessful calls to `At(i)` the two reasons are `(out of range)` and `(not an array)`.
 
+Jwalker objects have a `String()` method to be used for diagnostics only. You should NOT use `String()` to extract a string from the object. Instead you should use the proper methods `S(), KeyS(), AtS()` which are intended for extraction.
+
 ## Example
 
 Here are the contents of `test/a.json`:
 
 ```json
 {
-	"fruit": "apple",
-	"width": 32,
-	"ratio": 12.50,
+  "fruit": "apple",
+  "width": 32,
+  "ratio": 12.50,
+  "tasty": true,
 
-	"owner": {
-		"name": "gopher",
-		"year": 2010,
-		"ssid": 1234567890,
-		"frac": 1.234
-	},
+  "mixed": [
+	"banana",
+	64,
+	29.98,
+	true,
+	false
+  ],
 
-	"teams": [
-		"red",
-		"green",
-		"blue"
-	]
+  "owner": {
+	"name": "gopher",
+	"year": 2010,
+	"ssid": 1234567890,
+	"frac": 1.234,
+	"rich": false
+  },
+
+  "teams": [
+	"red",
+	"green",
+	"blue"
+  ]
 }
-
 ```
 
 Example code to interact with the above:
@@ -86,33 +97,56 @@ func main() {
   fruit, ok := w.Key("fruit").S()
   width, ok := w.Key("width").I()
   ratio, ok := w.Key("ratio").F64()
+  tasty, ok := w.Key("tasty").B()
 
   // Look-Up Key/Value Short-Form
   fruit, ok = w.KeyS("fruit")
   width, ok = w.KeyI("width")
   ratio, ok = w.KeyF64("ratio")
+  tasty, ok = w.KeyB("tasty")
 
   // Descend One Level
   name, ok := w.Key("owner").Key("name").S()
   year, ok := w.Key("owner").Key("year").I()
   ssid, ok := w.Key("owner").Key("ssid").U32()
   frac, ok := w.Key("owner").Key("frac").F64()
+  rich, ok := w.Key("owner").Key("rich").B()
 
   // Descend One Level Short-Form
   name, ok = w.Key("owner").KeyS("name")
   year, ok = w.Key("owner").KeyI("year")
   ssid, ok = w.Key("owner").KeyU32("ssid")
   frac, ok = w.Key("owner").KeyF64("frac")
+  rich, ok = w.Key("owner").KeyB("rich")
 
   // Descend Into Array
-  teamA, ok := w.Key("teams").At(0).S()
-  teamB, ok := w.Key("teams").At(1).S()
-  teamC, ok := w.Key("teams").At(2).S()
+  s, ok := w.Key("mixed").At(0).S()
+  i, ok := w.Key("mixed").At(1).I()
+  f, ok := w.Key("mixed").At(2).F64()
+  b, ok := w.Key("mixed").At(3).B()
 
   // Descend Into Array Short-Form
-  teamA, ok = w.Key("teams").AtS(0)
-  teamB, ok = w.Key("teams").AtS(1)
-  teamC, ok = w.Key("teams").AtS(2)
+  s, ok = w.Key("mixed").AtS(0)
+  i, ok = w.Key("mixed").AtI(1)
+  f, ok = w.Key("mixed").AtF64(2)
+  b, ok = w.Key("mixed").AtB(3)
+
+  // Iteration (Map)
+  keys := w.Key("owner").Keys()
+  for _, k := range keys {
+    value := w.Key("owner").Key(k)
+  }
+
+  // Iteration (Array)
+  for i = 0; i < w.Key("mixed").Len(); i++ {
+    value := w.Key("mixed").At(i)
+  }
+
+  // Type-Check: Is it a Map?
+  isMap := w.Key("owner").IsMap()
+
+  // Type-Check: Is it an Array?
+  isArray := w.Key("mixed").IsArray()
 
   // Diagnostics (Key Not Found)
   fruit, ok = w.Key("owner").Key("favorite_fruit")
@@ -135,9 +169,9 @@ func main() {
   // Diagnostics (Not An Array)
   fruit, ok = w.Key("owner").At(0)
   if !ok {
-    panic(fruit.Trace()) // Displays: [location] => key: owner [failure] => at: 0 (not an array)
+    panic(fruit.Trace()) // Displays: [location] => key: owner [failure] => at: 0 (key not found)
   }
 }
 ```
 
-Notice the short-form key-value methods `KeyS(), KeyI(), KeyU32(), KeyF64()`. Analogous to these are the array methods `AtS(), AtI(), AtU32() , AtF64()`.
+Notice the short-form key-value methods `KeyS(), KeyI(), KeyU32(), KeyF64(), KeyB()`. Analogous to these are the array methods `AtS(), AtI(), AtU32() , AtF64(), AtB()`.

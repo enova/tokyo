@@ -331,6 +331,26 @@ func TestChain(t *testing.T) {
 	assert.Equal(value, "XML")
 }
 
+func TestIs(t *testing.T) {
+	assert := assert.New(t)
+
+	file := ReadFile(assert, "test/a.json")
+	w, err := New(file)
+	assert.Nil(err)
+
+	// Map
+	assert.True(w.IsMap())
+	assert.False(w.IsArray())
+
+	// Array
+	assert.False(w.Key("mixed").IsMap())
+	assert.True(w.Key("mixed").IsArray())
+
+	// Neither
+	assert.False(w.Key("fruit").IsMap())
+	assert.False(w.Key("fruit").IsArray())
+}
+
 func TestTrace(t *testing.T) {
 	assert := assert.New(t)
 

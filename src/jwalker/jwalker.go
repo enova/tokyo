@@ -143,6 +143,18 @@ func (w *W) At(i int) *W {
 	return child
 }
 
+// IsMap returns true if the instance's object is a map
+func (w *W) IsMap() bool {
+	_, ok := w.obj.(map[string]interface{})
+	return ok
+}
+
+// IsArray returns true if the instance's object is an array
+func (w *W) IsArray() bool {
+	_, ok := w.obj.([]interface{})
+	return ok
+}
+
 // Len returns the length of the instance's object array
 // If the object is not an array then it returns 0
 func (w *W) Len() int {
