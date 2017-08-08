@@ -303,6 +303,19 @@ func TestFailedAccess(t *testing.T) {
 	assert.False(validity(b.S()))
 }
 
+func TestNilAccess(t *testing.T) {
+	assert := assert.New(t)
+
+	w, err := New(nil)
+	assert.NotNil(err)
+
+	value := w.Key("non-existent")
+	assert.False(value.Ok())
+
+	value = w.At(0)
+	assert.False(value.Ok())
+}
+
 func TestChain(t *testing.T) {
 	assert := assert.New(t)
 

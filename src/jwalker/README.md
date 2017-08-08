@@ -86,7 +86,7 @@ Example code to interact with the above:
 import (
   "io/ioutil"
 
-  "github.com/enova/tokyo/src/jwalker"
+  "git.enova.com/go/jwalker"
 )
 
 func main() {
@@ -149,27 +149,27 @@ func main() {
   isArray := w.Key("mixed").IsArray()
 
   // Diagnostics (Key Not Found)
-  fruit, ok = w.Key("owner").Key("favorite_fruit")
-  if !ok {
+  fruit = w.Key("owner").Key("favorite_fruit")
+  if !fruit.Ok() {
     panic(fruit.Trace()) // Displays: [location] => key: owner [failure] => key: favorite_fruit (key not found)
   }
 
   // Diagnostics (Not A Map)
-  team, ok := w.Key("teams").Key("first")
-  if !ok {
+  team := w.Key("teams").Key("first")
+  if !team.Ok() {
     panic(team.Trace()) // Displays: [location] => key: teams [failure] => key: first (not a map)
   }
 
   // Diagnostics (Out Of Range)
-  fruit, ok = w.Key("teams").At(5)
-  if !ok {
+  fruit = w.Key("teams").At(5)
+  if !fruit.Ok() {
     panic(fruit.Trace()) // Displays: [location] => key: teams [failure] => at: 5 (out of range, size 3)
   }
 
   // Diagnostics (Not An Array)
-  fruit, ok = w.Key("owner").At(0)
-  if !ok {
-    panic(fruit.Trace()) // Displays: [location] => key: owner [failure] => at: 0 (key not found)
+  fruit = w.Key("owner").At(0)
+  if !fruit.Ok() {
+    panic(fruit.Trace()) // Displays: [location] => key: owner [failure] => at: 0 (not an array)
   }
 }
 ```
