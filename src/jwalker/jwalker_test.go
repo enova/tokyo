@@ -303,6 +303,19 @@ func TestFailedAccess(t *testing.T) {
 	assert.False(validity(b.S()))
 }
 
+func TestNilAccess(t *testing.T) {
+	assert := assert.New(t)
+
+	w, err := New(nil)
+	assert.NotNil(err)
+
+	value := w.Key("non-existent")
+	assert.False(value.Ok())
+
+	value = w.At(0)
+	assert.False(value.Ok())
+}
+
 func TestChain(t *testing.T) {
 	assert := assert.New(t)
 
@@ -329,6 +342,26 @@ func TestChain(t *testing.T) {
 	value, ok = w.Key("glossary").Key("Div").Key("List").Key("Entry").Key("Def").Key("SeeAlso").At(1).S()
 	assert.True(ok)
 	assert.Equal(value, "XML")
+}
+
+func TestIs(t *testing.T) {
+	assert := assert.New(t)
+
+	file := ReadFile(assert, "test/a.json")
+	w, err := New(file)
+	assert.Nil(err)
+
+	// Map
+	assert.True(w.IsMap())
+	assert.False(w.IsArray())
+
+	// Array
+	assert.False(w.Key("mixed").IsMap())
+	assert.True(w.Key("mixed").IsArray())
+
+	// Neither
+	assert.False(w.Key("fruit").IsMap())
+	assert.False(w.Key("fruit").IsArray())
 }
 
 func TestTrace(t *testing.T) {

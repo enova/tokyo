@@ -71,9 +71,7 @@ func (w *W) Key(key string) *W {
 	// Verify Map
 	mapped, ok := w.obj.(map[string]interface{})
 	if !ok {
-		child.failure = "key: " + key
-		child.failure += " (not a map,"
-		child.failure += " rather it is of type " + reflect.TypeOf(w.obj).String() + ")"
+		child.failure = fmt.Sprintf("key: %s (not a map, rather it is of type %v)", key, reflect.TypeOf(w.obj))
 		return child
 	}
 
@@ -125,7 +123,7 @@ func (w *W) At(i int) *W {
 	array, ok := w.obj.([]interface{})
 	if !ok {
 		child.failure = fmt.Sprintf("at: %d (not an array,", i)
-		child.failure += " rather it is of type " + reflect.TypeOf(w.obj).String() + ")"
+		child.failure += fmt.Sprintf(" rather it is of type %v)", reflect.TypeOf(w.obj))
 		return child
 	}
 
@@ -141,6 +139,18 @@ func (w *W) At(i int) *W {
 	child.obj = value
 	child.appendLocation("at: " + strconv.Itoa(i))
 	return child
+}
+
+// IsMap returns true if the instance's object is a map
+func (w *W) IsMap() bool {
+	_, ok := w.obj.(map[string]interface{})
+	return ok
+}
+
+// IsArray returns true if the instance's object is an array
+func (w *W) IsArray() bool {
+	_, ok := w.obj.([]interface{})
+	return ok
 }
 
 // Len returns the length of the instance's object array
